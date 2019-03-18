@@ -41,6 +41,7 @@ SRC_C = main.c \
 	modusocket.c \
 	modutime.c \
 	modzephyr.c \
+	modzsensor.c \
 	modmachine.c \
 	machine_pin.c \
 	uart_core.c \
@@ -61,7 +62,8 @@ CFLAGS = $(Z_CFLAGS) \
 
 include $(TOP)/py/mkrules.mk
 
-GENERIC_TARGETS = all zephyr run qemu qemugdb flash debug debugserver
+GENERIC_TARGETS = all zephyr run qemu qemugdb flash debug debugserver \
+	ram_report rom_report
 KCONFIG_TARGETS = \
 	initconfig config nconfig menuconfig xconfig gconfig \
 	oldconfig silentoldconfig defconfig savedefconfig \
@@ -105,4 +107,4 @@ outdir/$(BOARD)/Makefile: $(CONF_FILE)
 
 $(Z_EXPORTS): outdir/$(BOARD)/Makefile
 	make --no-print-directory -C outdir/$(BOARD) outputexports CMAKE_COMMAND=: >$@
-	make -C outdir/$(BOARD) syscall_macros_h_target syscall_list_h_target
+	make -C outdir/$(BOARD) syscall_macros_h_target syscall_list_h_target kobj_types_h_target
