@@ -8,7 +8,6 @@
 #define MICROPY_HW_ENABLE_USB       (1)
 #define MICROPY_HW_HAS_SWITCH       (1)
 #define MICROPY_HW_HAS_FLASH        (1)
-#define MICROPY_HW_HAS_SDCARD       (1)
 
 #define MICROPY_BOARD_EARLY_INIT    NUCLEO_H743ZI_board_early_init
 void NUCLEO_H743ZI_board_early_init(void);
@@ -56,7 +55,7 @@ void NUCLEO_H743ZI_board_early_init(void);
 
 // LEDs
 #define MICROPY_HW_LED1             (pin_B0)    // green
-#define MICROPY_HW_LED2             (pin_B7)    // blue
+#define MICROPY_HW_LED2             (pin_E1)    // yellow
 #define MICROPY_HW_LED3             (pin_B14)   // red
 #define MICROPY_HW_LED_ON(pin)      (mp_hal_pin_high(pin))
 #define MICROPY_HW_LED_OFF(pin)     (mp_hal_pin_low(pin))
@@ -65,11 +64,6 @@ void NUCLEO_H743ZI_board_early_init(void);
 #define MICROPY_HW_USB_FS              (1)
 #define MICROPY_HW_USB_VBUS_DETECT_PIN (pin_A9)
 #define MICROPY_HW_USB_OTG_ID_PIN      (pin_A10)
-
-// SD card detect switch
-#define MICROPY_HW_SDCARD_DETECT_PIN        (pin_G2)
-#define MICROPY_HW_SDCARD_DETECT_PULL       (GPIO_PULLUP)
-#define MICROPY_HW_SDCARD_DETECT_PRESENT    (GPIO_PIN_RESET)
 
 // Ethernet via RMII
 #define MICROPY_HW_ETH_MDC          (pin_C1)
