@@ -41,11 +41,17 @@ void NUCLEO_H743ZI_board_early_init(void);
 #define MICROPY_HW_I2C2_SCL         (pin_F1)
 #define MICROPY_HW_I2C2_SDA         (pin_F0)
 
-// SPI
-//#define MICROPY_HW_SPI2_NSS         (pin_I0)
-//#define MICROPY_HW_SPI2_SCK         (pin_I1)
-//#define MICROPY_HW_SPI2_MISO        (pin_B14)
-//#define MICROPY_HW_SPI2_MOSI        (pin_B15)
+// SPI busses
+#define MICROPY_HW_SPI1_NAME "A"
+#define MICROPY_HW_SPI1_NSS  (pin_D14)
+#define MICROPY_HW_SPI1_SCK  (pin_A5)
+#define MICROPY_HW_SPI1_MISO (pin_A6)
+#define MICROPY_HW_SPI1_MOSI (pin_B5)
+#define MICROPY_HW_SPI3_NAME "B"
+#define MICROPY_HW_SPI3_NSS  (pin_A4)
+#define MICROPY_HW_SPI3_SCK  (pin_B3)
+#define MICROPY_HW_SPI3_MISO (pin_B4)
+#define MICROPY_HW_SPI3_MOSI (pin_B5)
 
 // USRSW is pulled low. Pressing the button makes the input go high.
 #define MICROPY_HW_USRSW_PIN        (pin_C13)
