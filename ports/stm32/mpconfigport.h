@@ -229,6 +229,13 @@ extern const struct _mp_obj_module_t mp_module_onewire;
 #define NETWORK_BUILTIN_MODULE
 #endif
 
+#if BOARD_SPECIFIC_MODULES
+#include "boardmodules.h"
+#define MICROPY_BOARD_BUILTINS BOARD_MODULES
+#else
+#define MICROPY_BOARD_BUILTINS
+#endif // BOARD_SPECIFIC_MODULES
+
 #define MICROPY_PORT_BUILTIN_MODULES \
     { MP_ROM_QSTR(MP_QSTR_umachine), MP_ROM_PTR(&machine_module) }, \
     { MP_ROM_QSTR(MP_QSTR_pyb), MP_ROM_PTR(&pyb_module) }, \
@@ -238,6 +245,7 @@ extern const struct _mp_obj_module_t mp_module_onewire;
     SOCKET_BUILTIN_MODULE \
     NETWORK_BUILTIN_MODULE \
     { MP_ROM_QSTR(MP_QSTR__onewire), MP_ROM_PTR(&mp_module_onewire) }, \
+    MICROPY_BOARD_BUILTINS \
 
 #define MICROPY_PORT_BUILTIN_MODULE_WEAK_LINKS \
     { MP_ROM_QSTR(MP_QSTR_binascii), MP_ROM_PTR(&mp_module_ubinascii) }, \

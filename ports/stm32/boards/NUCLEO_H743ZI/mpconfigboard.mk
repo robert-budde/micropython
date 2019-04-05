@@ -8,3 +8,5 @@ TEXT1_ADDR = 0x08040000
 
 # MicroPython settings
 MICROPY_PY_LWIP = 1
+
+-include boards/NUCLEO_H743ZI/modules/boardmodules.mk
