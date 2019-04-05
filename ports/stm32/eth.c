@@ -61,6 +61,24 @@
 
 // ETH DMA RX and TX descriptor definitions
 
+#if defined(STM32H7)
+#define RX_DESCR_3_OWN_Pos      (31)
+#define RX_DESCR_3_BUF1V_Pos    (24)
+#define RX_DESCR_3_PL_Pos       (0)
+#define RX_DESCR_3_PL_Msk       (0x3fff << RX_DESCR_3_PL_Pos)
+
+#define RX_DESCR_1_RER_Pos      (15)
+#define RX_DESCR_1_RCH_Pos      (14)
+#define RX_DESCR_1_RBS2_Pos     (16)
+#define RX_DESCR_1_RBS1_Pos     (0)
+
+#define TX_DESCR_3_OWN_Pos      (31)
+#define TX_DESCR_3_FD_Pos       (29) /* TX_DESCR_0_FS_Pos - switched position */
+#define TX_DESCR_3_LD_Pos       (28) /* TX_DESCR_0_LS_Pos - switched position */
+#define TX_DESCR_3_CPC_Pos      (26) /* TX_DESCR_0_DP_Pos */
+#define TX_DESCR_3_CIC_Pos      (16)
+
+#else
 #define RX_DESCR_0_OWN_Pos      (31)
 #define RX_DESCR_0_FL_Pos       (16)
 #define RX_DESCR_0_FL_Msk       (0x3fff << RX_DESCR_0_FL_Pos)
@@ -77,6 +95,7 @@
 #define TX_DESCR_0_TER_Pos      (21)
 #define TX_DESCR_0_TCH_Pos      (20)
 #define TX_DESCR_1_TBS1_Pos     (0)
+#endif
 
 // Configuration values
 
@@ -360,6 +379,18 @@ STATIC int eth_mac_init(eth_t *self) {
 #endif
 
     // Configure RX descriptor lists
+#if defined(STM32H7)
+    ETH->DMACCR = (ETH->DMACCR & ~ETH_DMACCR_DSL_Msk) | ETH_DMACCR_DSL_0BIT;
+    for (size_t i = 0; i < RX_BUF_NUM; ++i) {
+        eth_dma.rx_descr[i].rdes0 = (uint32_t)&eth_dma.rx_buf[i * RX_BUF_SIZE];
+        eth_dma.rx_descr[i].rdes1 = 0;
+        eth_dma.rx_descr[i].rdes2 = 0;
+        eth_dma.rx_descr[i].rdes3 = 1 << RX_DESCR_3_OWN_Pos | 1 << RX_DESCR_3_BUF1V_Pos;
+    }
+    ETH->DMACRDRLR = RX_BUF_NUM - 1;
+    ETH->DMACRDLAR = (uint32_t)&eth_dma.rx_descr[0];
+    ETH->DMACRDTPR = (uint32_t)&eth_dma.rx_descr[RX_BUF_NUM - 1];
+#else
     for (size_t i = 0; i < RX_BUF_NUM; ++i) {
         eth_dma.rx_descr[i].rdes0 = 1 << RX_DESCR_0_OWN_Pos;
         eth_dma.rx_descr[i].rdes1 =
@@ -369,27 +400,28 @@ STATIC int eth_mac_init(eth_t *self) {
         eth_dma.rx_descr[i].rdes2 = (uint32_t)&eth_dma.rx_buf[i * RX_BUF_SIZE];
         eth_dma.rx_descr[i].rdes3 = (uint32_t)&eth_dma.rx_descr[(i + 1) % RX_BUF_NUM];
     }
-#if defined(STM32H7)
-    ETH->DMACRDRLR = RX_BUF_NUM - 1;
-    ETH->DMACRDLAR = (uint32_t)&eth_dma.rx_descr[0];
-    ETH->DMACRDTPR = (uint32_t)&eth_dma.rx_descr[RX_BUF_NUM - 1];
-#else
     ETH->DMARDLAR = (uint32_t)&eth_dma.rx_descr[0];
 #endif
     eth_dma.rx_descr_idx = 0;
 
     // Configure TX descriptor lists
+#if defined(STM32H7)
+    for (size_t i = 0; i < TX_BUF_NUM; ++i) {
+        eth_dma.tx_descr[i].tdes0 = 0;
+        eth_dma.tx_descr[i].tdes1 = 0;
+        eth_dma.tx_descr[i].tdes2 = 0;
+        eth_dma.tx_descr[i].tdes3 = 0;
+    }
+    ETH->DMACTDRLR = TX_BUF_NUM - 1;
+    ETH->DMACTDLAR = (uint32_t)&eth_dma.tx_descr[0];
+    ETH->DMACTDTPR = (uint32_t)&eth_dma.tx_descr[0];
+#else
     for (size_t i = 0; i < TX_BUF_NUM; ++i) {
         eth_dma.tx_descr[i].tdes0 = 1 << TX_DESCR_0_TCH_Pos;
         eth_dma.tx_descr[i].tdes1 = 0;
         eth_dma.tx_descr[i].tdes2 = 0;
         eth_dma.tx_descr[i].tdes3 = (uint32_t)&eth_dma.tx_descr[(i + 1) % TX_BUF_NUM];
     }
-#if defined(STM32H7)
-    ETH->DMACTDRLR = TX_BUF_NUM - 1;
-    ETH->DMACTDLAR = (uint32_t)&eth_dma.tx_descr[0];
-    ETH->DMACTDTPR = (uint32_t)&eth_dma.tx_descr[0];
-#else
     ETH->DMATDLAR = (uint32_t)&eth_dma.tx_descr[0];
 #endif
     eth_dma.tx_descr_idx = 0;
@@ -486,7 +518,11 @@ STATIC int eth_tx_buf_get(size_t len, uint8_t **buf) {
     eth_dma_tx_descr_t *tx_descr = &eth_dma.tx_descr[eth_dma.tx_descr_idx];
     uint32_t t0 = mp_hal_ticks_ms();
     for (;;) {
+#if defined(STM32H7)
+        if (!(tx_descr->tdes3 & (1 << TX_DESCR_3_OWN_Pos))) {
+#else
         if (!(tx_descr->tdes0 & (1 << TX_DESCR_0_OWN_Pos))) {
+#endif
             break;
         }
         if (mp_hal_ticks_ms() - t0 > 1000) {
@@ -496,7 +532,9 @@ STATIC int eth_tx_buf_get(size_t len, uint8_t **buf) {
 
     // Update TX descriptor with length, buffer pointer and linked list pointer
     *buf = &eth_dma.tx_buf[eth_dma.tx_descr_idx * TX_BUF_SIZE];
+#if !defined(STM32H7)
     tx_descr->tdes1 = len << TX_DESCR_1_TBS1_Pos;
+#endif
     tx_descr->tdes2 = (uint32_t)*buf;
     tx_descr->tdes3 = (uint32_t)&eth_dma.tx_descr[(eth_dma.tx_descr_idx + 1) % TX_BUF_NUM];
 
@@ -509,6 +547,14 @@ STATIC int eth_tx_buf_send(void) {
     eth_dma.tx_descr_idx = (eth_dma.tx_descr_idx + 1) % TX_BUF_NUM;
 
     // Schedule to send next outgoing frame
+#if defined(STM32H7)
+    tx_descr->tdes3 =
+        1 << TX_DESCR_3_OWN_Pos     // owned by DMA
+        | 1 << TX_DESCR_3_LD_Pos    // last descriptor
+        | 1 << TX_DESCR_3_FD_Pos    // first descriptor
+        | 3 << TX_DESCR_3_CPC_Pos   // enable all checksums inserted by hardware
+        ;
+#else
     tx_descr->tdes0 =
         1 << TX_DESCR_0_OWN_Pos     // owned by DMA
         | 1 << TX_DESCR_0_LS_Pos    // last segment
@@ -516,6 +562,7 @@ STATIC int eth_tx_buf_send(void) {
         | 3 << TX_DESCR_0_CIC_Pos   // enable all checksums inserted by hardware
         | 1 << TX_DESCR_0_TCH_Pos   // TX descriptor is chained
         ;
+#endif
 
     // Notify ETH DMA that there is a new TX descriptor for sending
     __DMB();
@@ -544,7 +591,11 @@ STATIC void eth_dma_rx_free(void) {
         ;
     rx_descr->rdes2 = (uint32_t)buf;
     rx_descr->rdes3 = (uint32_t)&eth_dma.rx_descr[eth_dma.rx_descr_idx];
+#if defined(STM32H7)
+    rx_descr->rdes3 = 1 << RX_DESCR_3_OWN_Pos;  // owned by DMA
+#else
     rx_descr->rdes0 = 1 << RX_DESCR_0_OWN_Pos;  // owned by DMA
+#endif
 
     // Notify ETH DMA that there is a new RX descriptor available
     __DMB();
@@ -569,13 +620,22 @@ void ETH_IRQHandler(void) {
 #endif
         for (;;) {
             eth_dma_rx_descr_t *rx_descr = &eth_dma.rx_descr[eth_dma.rx_descr_idx];
+#if defined(STM32H7)
+            if (rx_descr->rdes3 & (1 << RX_DESCR_3_OWN_Pos)) {
+#else
             if (rx_descr->rdes0 & (1 << RX_DESCR_0_OWN_Pos)) {
+#endif
                 // No more RX descriptors ready to read
                 break;
             }
 
+#if defined(STM32H7)
+            // Get RX buffer containing new packet
+            size_t len = (rx_descr->rdes3 & RX_DESCR_3_PL_Msk) >> RX_DESCR_3_PL_Pos;
+#else
             // Get RX buffer containing new frame
             size_t len = (rx_descr->rdes0 & RX_DESCR_0_FL_Msk) >> RX_DESCR_0_FL_Pos;
+#endif
             len -= 4; // discard CRC at end
             uint8_t *buf = (uint8_t*)rx_descr->rdes2;
 
